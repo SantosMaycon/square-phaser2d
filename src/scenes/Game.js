@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 
 const acceleration = 600;
+const jumpVelocity = 330;
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -12,6 +13,7 @@ export default class GameScene extends Phaser.Scene {
     this.cursors;
     this.score = 0;
     this.scoreText;
+    this.jumping = false;
   }
 
   preload() {
@@ -73,7 +75,7 @@ export default class GameScene extends Phaser.Scene {
 
     if (this.cursors.left.isDown) {
       this.player.setAccelerationX(
-        standing ? -acceleration : -acceleration / 2
+        standing ? -acceleration : -acceleration / 3
       );
     } else if (this.cursors.right.isDown) {
       this.player.setAccelerationX(standing ? acceleration : acceleration / 3);
@@ -91,8 +93,17 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
-    if (standing && (this.cursors.space.isDown || this.cursors.up.isDown)) {
-      this.player.setVelocityY(-330);
+    if (
+      standing &&
+      (this.cursors.space.isDown || this.cursors.up.isDown) &&
+      !this.jumping
+    ) {
+      this.player.setVelocityY(-jumpVelocity);
+      this.jumping = true;
+    } else if (!this.cursors.up.isDown) {
+      if (this.player.body.touching.down) {
+        this.jumping = false;
+      }
     }
   }
 }
