@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 
+const acceleration = 600;
+
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super("GameScene");
@@ -22,10 +24,7 @@ export default class GameScene extends Phaser.Scene {
   create() {
     this.platform = this.physics.add.staticGroup();
 
-    this.platform
-      .create(400, 400, "ground")
-      .setScale(2)
-      .refreshBody();
+    this.platform.create(400, 400, "ground").setScale(2).refreshBody();
     this.platform.create(50, 240, "ground");
     this.platform.create(750, 140, "ground");
 
@@ -41,16 +40,16 @@ export default class GameScene extends Phaser.Scene {
     this.coins = this.physics.add.group({
       key: "coin",
       repeat: 11,
-      setXY: { x: 12, y: 0, stepX: 70 }
+      setXY: { x: 12, y: 0, stepX: 70 },
     });
 
-    this.coins.children.iterate(coin => {
+    this.coins.children.iterate((coin) => {
       coin.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
     });
 
     this.scoreText = this.add.text(16, 16, "score 0", {
       fontSize: "24px",
-      fill: "#fff"
+      fill: "#fff",
     });
 
     this.physics.add.collider(this.player, this.platform);
@@ -69,18 +68,30 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update() {
-    const stading =
+    const standing =
       this.player.body.blocked.down || this.player.body.touching.down;
 
     if (this.cursors.left.isDown) {
-      this.player.setVelocityX(-160);
+      this.player.setAccelerationX(
+        standing ? -acceleration : -acceleration / 2
+      );
     } else if (this.cursors.right.isDown) {
-      this.player.setVelocityX(160);
+      this.player.setAccelerationX(standing ? acceleration : acceleration / 3);
     } else {
-      this.player.setVelocityX(0);
+      if (
+        Math.abs(this.player.body.velocity.x) < 10 &&
+        Math.abs(this.player.body.velocity.x) > -10
+      ) {
+        this.player.setVelocityX(0);
+        this.player.setAccelerationX(0);
+      } else {
+        this.player.setAccelerationX(
+          ((this.player.body.velocity.x > 0 ? -1 : 1) * acceleration) / 3
+        );
+      }
     }
 
-    if (stading && (this.cursors.space.isDown || this.cursors.up.isDown)) {
+    if (standing && (this.cursors.space.isDown || this.cursors.up.isDown)) {
       this.player.setVelocityY(-330);
     }
   }
