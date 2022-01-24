@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+import Phaser, { Data } from "phaser";
 
 const acceleration = 600;
 const jumpVelocity = 330;
@@ -14,6 +14,8 @@ export default class GameScene extends Phaser.Scene {
     this.score = 0;
     this.scoreText;
     this.jumping = false;
+    this.wasStanding = false;
+    this.edgerTime = 0;
   }
 
   preload() {
@@ -93,17 +95,29 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
+    // get current time in seconds
+    const time = new Date().getTime();
+
+    // if we have just left the ground set edger time for 100ms time
+    if (standing && this.wasStanding) {
+      this.edgerTime = time + 150;
+    }
+
     if (
-      standing &&
+      (standing || time <= this.edgerTime) &&
       (this.cursors.space.isDown || this.cursors.up.isDown) &&
       !this.jumping
     ) {
       this.player.setVelocityY(-jumpVelocity);
       this.jumping = true;
-    } else if (!this.cursors.up.isDown) {
+    }
+
+    if (!this.cursors.up.isDown && !this.cursors.space.isDown) {
       if (this.player.body.touching.down) {
         this.jumping = false;
       }
     }
+
+    this.wasStanding = standing;
   }
 }
