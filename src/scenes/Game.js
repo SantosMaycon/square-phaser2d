@@ -14,8 +14,17 @@ export default class GameScene extends Phaser.Scene {
     this.score = 0;
     this.scoreText;
     this.jumping = false;
+    this.move = {};
+
+    //edger time
     this.wasStanding = false;
     this.edgerTime = 0;
+
+    // touch jump
+    this.prevPos = 0;
+    this.yPos = 0;
+    this.touchJump = false;
+    this.touchJumpThreshold = 5; // para evitar falso click
   }
 
   preload() {
@@ -26,6 +35,8 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    this.input.addPointer(1);
+
     this.platform = this.physics.add.staticGroup();
 
     this.platform.create(400, 400, "ground").setScale(2).refreshBody();
@@ -69,29 +80,86 @@ export default class GameScene extends Phaser.Scene {
       null,
       this
     );
+
+    // move proprety
+    this.move = {
+      left: (standing) => {
+        this.player.setAccelerationX(
+          standing ? -acceleration : -acceleration / 3
+        );
+      },
+      right: (standing) => {
+        this.player.setAccelerationX(
+          standing ? acceleration : acceleration / 3
+        );
+      },
+    };
   }
 
   update() {
     const standing =
       this.player.body.blocked.down || this.player.body.touching.down;
 
-    if (this.cursors.left.isDown) {
-      this.player.setAccelerationX(
-        standing ? -acceleration : -acceleration / 3
-      );
-    } else if (this.cursors.right.isDown) {
-      this.player.setAccelerationX(standing ? acceleration : acceleration / 3);
+    // keyboard movement logic
+    if (this.cursors.left.isDown) this.move.left(standing);
+    else if (this.cursors.right.isDown) this.move.right(standing);
+    else if (
+      Math.abs(this.player.body.velocity.x) < 10 &&
+      Math.abs(this.player.body.velocity.x) > -10
+    ) {
+      this.player.setVelocityX(0);
+      this.player.setAccelerationX(0);
     } else {
+      this.player.setAccelerationX(
+        ((this.player.body.velocity.x > 0 ? -1 : 1) * acceleration) / 3
+      );
+    }
+
+    // touch movement logic
+    if (this.input.pointer1.isDown || this.input.pointer2.isDown) {
+      const leftHalf = this.sys.game.canvas.width / 2;
+
       if (
-        Math.abs(this.player.body.velocity.x) < 10 &&
-        Math.abs(this.player.body.velocity.x) > -10
+        this.input.pointer1.x < leftHalf ||
+        this.input.pointer2.x < leftHalf
       ) {
-        this.player.setVelocityX(0);
-        this.player.setAccelerationX(0);
-      } else {
-        this.player.setAccelerationX(
-          ((this.player.body.velocity.x > 0 ? -1 : 1) * acceleration) / 3
-        );
+        let myMovePointer = null;
+
+        if (this.input.pointer1.x < leftHalf && this.input.pointer1.isDown)
+          myMovePointer = this.input.pointer1;
+
+        if (this.input.pointer2.x < leftHalf && this.input.pointer2.isDown)
+          myMovePointer = this.input.pointer2;
+
+        if (myMovePointer) {
+          if (Math.floor(myMovePointer.x / (leftHalf / 2)) == 0)
+            this.move.left(standing);
+
+          if (Math.floor(myMovePointer.x / (leftHalf / 2)) == 1)
+            this.move.right(standing);
+        }
+      }
+
+      // touch jump logic
+      if (
+        this.input.pointer1.x > leftHalf ||
+        this.input.pointer2.x > leftHalf
+      ) {
+        let myJumpPointer = null;
+
+        if (this.input.pointer1.x > leftHalf && this.input.pointer1.isDown)
+          myJumpPointer = this.input.pointer1;
+
+        if (this.input.pointer2.x > leftHalf && this.input.pointer2.isDown)
+          myJumpPointer = this.input.pointer2;
+
+        if (myJumpPointer) {
+          //if we have a touch pointer on right hand side of screen...
+          this.prevPos = this.yPos;
+          this.yPos = myJumpPointer.y;
+
+          if (this.prevPos - this.yPos > this.touchJump) this.touchJump = true;
+        }
       }
     }
 
@@ -105,7 +173,7 @@ export default class GameScene extends Phaser.Scene {
 
     if (
       (standing || time <= this.edgerTime) &&
-      (this.cursors.space.isDown || this.cursors.up.isDown) &&
+      (this.cursors.space.isDown || this.cursors.up.isDown || this.touchJump) &&
       !this.jumping
     ) {
       this.player.setVelocityY(-jumpVelocity);
@@ -115,6 +183,8 @@ export default class GameScene extends Phaser.Scene {
     if (!this.cursors.up.isDown && !this.cursors.space.isDown) {
       if (this.player.body.touching.down) {
         this.jumping = false;
+        this.touchJump = false;
+        this.prevPos = 0;
       }
     }
 
