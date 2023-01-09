@@ -35,6 +35,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // add more an touch in the game
     this.input.addPointer(1);
 
     this.platform = this.physics.add.staticGroup();
